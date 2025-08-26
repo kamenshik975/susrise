@@ -48,7 +48,8 @@ namespace Content.Shared.Damage
         public float UniversalTopicalsHealModifier { get; private set; } = 1f;
         public float UniversalMobDamageModifier { get; private set; } = 1f;
 
-        public float Variance = 0.3f; // Sunrise-Edit
+        public float PositiveVariance; // Sunrise-Edit
+        public float NegativeVariance; // Sunrise-Edit
         public float DamageModifier = 1f; // Sunrise-Edit
         public float HealModifier = 1f; // Sunrise-Edit
 
@@ -95,7 +96,8 @@ namespace Content.Shared.Damage
             Subs.CVar(_config, CCVars.PlaytestTopicalsHealModifier, value => UniversalTopicalsHealModifier = value, true);
             Subs.CVar(_config, CCVars.PlaytestMobDamageModifier, value => UniversalMobDamageModifier = value, true);
 
-            _config.OnValueChanged(SunriseCCVars.DamageVariance, UpdateVariance, true); // Sunrise-Edit
+            _config.OnValueChanged(SunriseCCVars.DamagePositiveVariance, UpdatePositiveVariance, true); // Sunrise-Edit
+            _config.OnValueChanged(SunriseCCVars.DamageNegativeVariance, UpdateNegativeVariance, true); // Sunrise-Edit
             _config.OnValueChanged(SunriseCCVars.DamageModifier, UpdateDamageModifier, true); // Sunrise-Edit
             _config.OnValueChanged(SunriseCCVars.HealModifier, UpdateHealModifier, true); // Sunrise-Edit
         }
@@ -185,9 +187,16 @@ namespace Content.Shared.Damage
         ///     Returns a <see cref="DamageSpecifier"/> with information about the actual damage changes. This will be
         ///     null if the user had no applicable components that can take damage.
         /// </returns>
-        public DamageSpecifier? TryChangeDamage(EntityUid? uid, DamageSpecifier damage, bool ignoreResistances = false,
-            bool interruptsDoAfters = true, DamageableComponent? damageable = null, EntityUid? origin = null,
-            bool useVariance = true, bool useModifier = true, float armorPenetration = 0f)
+        public DamageSpecifier? TryChangeDamage(EntityUid? uid,
+            DamageSpecifier damage,
+            bool ignoreResistances = false,
+            bool interruptsDoAfters = true,
+            DamageableComponent? damageable = null,
+            EntityUid? origin = null,
+            bool useVariance = true,
+            bool useModifier = true,
+            float armorPenetration = 0f, // 🌟Starlight🌟
+            bool canHeal = true) // 🌟Starlight🌟
         {
             if (!uid.HasValue || !_damageableQuery.Resolve(uid.Value, ref damageable, false))
             {
@@ -212,7 +221,13 @@ namespace Content.Shared.Damage
 
             if (useVariance)
             {
-                var varianceMultiplier = 1f + Variance - _random.NextFloat(0, Variance * 2f);
+                var varianceMultiplier = 1f;
+                if (damage.GetTotal() > 0)
+                {
+                    var min = 1f - NegativeVariance;
+                    var max = 1f + PositiveVariance;
+                    varianceMultiplier = _random.NextFloat(min, max);
+                }
                 damage *= varianceMultiplier;
             }
             // Sunrise-End
@@ -228,7 +243,7 @@ namespace Content.Shared.Damage
                     damage = DamageSpecifier.ApplyModifierSet(damage, modifierSet);
                 }
 
-                var ev = new DamageModifyEvent(damage, origin, armorPenetration);
+                var ev = new DamageModifyEvent(damage, origin, armorPenetration, canHeal);    // 🌟Starlight🌟
                 RaiseLocalEvent(uid.Value, ev);
                 damage = ev.Damage;
 
@@ -401,9 +416,14 @@ namespace Content.Shared.Damage
         }
 
         // Sunrise-Start
-        private void UpdateVariance(float value)
+        private void UpdatePositiveVariance(float value)
         {
-            Variance = value;
+            PositiveVariance = value;
+        }
+
+        private void UpdateNegativeVariance(float value)
+        {
+            NegativeVariance = value;
         }
 
         private void UpdateHealModifier(float value)
@@ -439,14 +459,16 @@ namespace Content.Shared.Damage
         public readonly DamageSpecifier OriginalDamage;
         public DamageSpecifier Damage;
         public EntityUid? Origin;
-        public float ArmorPenetration;
+        public float ArmorPenetration;   // 🌟Starlight🌟
+        public bool CanHeal;  // 🌟Starlight🌟
 
-        public DamageModifyEvent(DamageSpecifier damage, EntityUid? origin = null, float armorPenetration = 0f)
+        public DamageModifyEvent(DamageSpecifier damage, EntityUid? origin = null, float armorPenetration = 0f, bool canHeal = false) // 🌟Starlight🌟
         {
             OriginalDamage = damage;
             Damage = damage;
             Origin = origin;
-            ArmorPenetration = armorPenetration;
+            ArmorPenetration = armorPenetration;   // 🌟Starlight🌟
+            CanHeal = canHeal; // 🌟Starlight🌟
         }
     }
 

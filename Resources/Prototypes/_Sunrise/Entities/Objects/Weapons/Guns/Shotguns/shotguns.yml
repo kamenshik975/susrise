@@ -1,6 +1,6 @@
 - type: entity
   name: Spas-12
-  parent: [BaseWeaponShotgun, GunLight, GunMeleeMedium, BaseSecurityContraband]
+  parent: [BaseWeaponShotgun, GunMeleeMedium, BaseSecurityContraband]
   id: WeaponShotgunSPAS12
   components:
   - type: Sprite
@@ -57,7 +57,7 @@
   - type: GunRequiresWield
   - type: Gun
     pump: true
-    fireRate: 1.5
+    fireRate: 1.25
   - type: GunSpreadModifier
     spread: 0.8
   - type: Construction
